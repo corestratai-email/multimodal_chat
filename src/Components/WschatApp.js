@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './WschatApp.css';
+import axios from 'axios';
 
 function WschatApp() {
   const [models, setModels] = useState({});
@@ -38,6 +39,27 @@ function WschatApp() {
         {value}
       </SyntaxHighlighter>
     );
+  };
+
+  const getRecommendation = async () => {
+    if (!inputMessage.trim()) {
+      alert('Please enter a message first to get a model recommendation.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/recommend`, {
+        message: inputMessage
+      });
+      
+      setRecommendation(response.data);
+      setSelectedModel(response.data.recommended_model);
+    } catch (error) {
+      console.error('Error getting recommendation:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // WebSocket message logging
@@ -336,6 +358,7 @@ function WschatApp() {
         setIsLoading(false);
         setMessages(prev => prev.filter(msg => !msg.isLoading));
       }
+
     } else {
       const errorMessage = {
         id: Date.now(),
@@ -365,100 +388,45 @@ function WschatApp() {
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'Arial, sans-serif' }}>
       <div style={{ flex: showWsLog ? 2 : 1, display: 'flex', flexDirection: 'column' }}>
-        <header style={{ padding: '20px', borderBottom: '1px solid #ddd', backgroundColor: '#f8f9fa' }}>
-          <h1 style={{ margin: '0 0 20px 0', fontSize: '24px' }}>Multi-Model LLM Chat Interface</h1>
-
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '15px',
-            marginBottom: '15px',
-            padding: '12px',
-            backgroundColor: '#ffffff',
-            borderRadius: '8px',
-            border: '1px solid #e1e5e9'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  backgroundColor: getConnectionStatusColor(),
-                  boxShadow: `0 0 8px ${getConnectionStatusColor()}40`
-                }}
-              />
-              <span style={{ fontSize: '14px', textTransform: 'capitalize', fontWeight: '500' }}>
-                WebSocket: {wsStatus}
-              </span>
+        <header className="chat-header">
+          <h1>Multi-Model LLM Chat Interface</h1>
+          
+          <div className="model-selection">
+            <div className="model-dropdown">
+              <label htmlFor="model-select">Select Model:</label>
+              <select
+                id="model-select"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+              >
+                {Object.entries(models).map(([key, model]) => (
+                  <option key={key} value={key}>
+                    {model.display_name}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="recommend-btn"
+                onClick={getRecommendation}
+                disabled={isLoading}
+              >
+                🤖 Get Recommendation
+              </button>
             </div>
-
-            <button
-              onClick={connect}
-              disabled={wsStatus === 'connected' || wsStatus === 'connecting'}
-              style={{
-                fontSize: '12px',
-                padding: '6px 12px',
-                border: '1px solid #007bff',
-                backgroundColor: '#007bff',
-                color: 'white',
-                borderRadius: '4px',
-                cursor: wsStatus === 'disconnected' ? 'pointer' : 'not-allowed',
-                opacity: wsStatus === 'disconnected' ? 1 : 0.6
-              }}
-            >
-              Connect
-            </button>
-
-            <button
-              onClick={disconnect}
-              disabled={wsStatus === 'disconnected'}
-              style={{
-                fontSize: '12px',
-                padding: '6px 12px',
-                border: '1px solid #dc3545',
-                backgroundColor: '#dc3545',
-                color: 'white',
-                borderRadius: '4px',
-                cursor: wsStatus !== 'disconnected' ? 'pointer' : 'not-allowed',
-                opacity: wsStatus !== 'disconnected' ? 1 : 0.6
-              }}
-            >
-              Disconnect
-            </button>
-
-            <button
-              onClick={() => setShowWsLog(!showWsLog)}
-              style={{
-                fontSize: '12px',
-                padding: '6px 12px',
-                border: '1px solid #28a745',
-                backgroundColor: showWsLog ? '#28a745' : 'white',
-                color: showWsLog ? 'white' : '#28a745',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              {showWsLog ? 'Hide' : 'Show'} WS Log ({wsMessages.length})
-            </button>
+            
+            {selectedModel && models[selectedModel] && (
+              <div className="model-info">
+                {models[selectedModel].description}
+              </div>
+            )}
+            
+            {recommendation && (
+              <div className="recommendation">
+                <strong>🎯 Recommended:</strong> {recommendation.model_info.display_name}<br/>
+                <strong>Reason:</strong> {recommendation.reason}
+              </div>
+            )}
           </div>
-
-          <div style={{ marginBottom: '10px' }}>
-            <label style={{ marginRight: '10px', fontWeight: '500' }}>Model:</label>
-            <select
-              id="model-select"
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', minWidth: '220px' }}
-            >
-              {Object.entries(models).map(([key, model]) => (
-                <option key={key} value={key}>
-                  {model.display_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
         </header>
         <div className="messages-container">
           {messages.map((message) => (
