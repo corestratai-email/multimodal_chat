@@ -40,6 +40,27 @@ function WschatApp() {
     );
   };
 
+  const getRecommendation = async () => {
+    if (!inputMessage.trim()) {
+      alert('Please enter a message first to get a model recommendation.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/recommend`, {
+        message: inputMessage
+      });
+      
+      setRecommendation(response.data);
+      setSelectedModel(response.data.recommended_model);
+    } catch (error) {
+      console.error('Error getting recommendation:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // WebSocket message logging
   const [wsMessages, setWsMessages] = useState([]);
   const [showWsLog, setShowWsLog] = useState(false);
@@ -336,6 +357,7 @@ function WschatApp() {
         setIsLoading(false);
         setMessages(prev => prev.filter(msg => !msg.isLoading));
       }
+
     } else {
       const errorMessage = {
         id: Date.now(),

@@ -1,11 +1,13 @@
 
 
-import WschatApp from "./Components/WschatApp";
+import Ws from "./Components/Ws";
+
 
 const App = () => {
   return (
     <>
-      <WschatApp/>
+      {/* <WschatApp/> */}
+      <Ws/>
     </>
   );
 };
